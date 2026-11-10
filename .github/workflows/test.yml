@@ -1,0 +1,46 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  functional-test:
+    name: Test fonctionnel
+    runs-on: ubuntu-latest
+    # Base MariaDB démarrée par GitHub pour la durée du job.
+    services:
+      db:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Construire l'image
+        run: docker build -t app .
+
+      # --network host : l'application joint la base du service sur 127.0.0.1:3306.
+      - name: Lancer l'application
+        run: docker run -d --name app --network host -e DB_HOST=127.0.0.1 -e DB_PASSWORD=root app
+
+      - name: Vérifier la page d'accueil
+        run: |
+          response=$(curl --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors http://127.0.0.1:5000/)
+          echo "Réponse : $response"
+          test "$response" = "Database Connection Status: Connected"
+
+      - name: Logs de l'application en cas d'échec
+        if: failure()
+        run: docker logs app
