@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Secrets et configuration locale
+.env
+
+# Éditeurs et système
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
